@@ -10,6 +10,7 @@ import { MessageList } from "@/features/chat/components/message-list";
 import { useChatController } from "@/features/chat/hooks/use-chat-controller";
 import { userFacingError } from "@/lib/ai/errors";
 
+// 聊天工作台外壳组件
 export function ChatShell({ sessionId }: { sessionId: string }) {
     const controller = useChatController(sessionId);
     const streaming = controller.status === "streaming" || controller.status === "submitted";

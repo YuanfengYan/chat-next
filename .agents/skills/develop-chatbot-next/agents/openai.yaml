@@ -1,4 +1,0 @@
-interface:
-  display_name: "Develop Chatbot Next"
-  short_description: "Build and extend this modular AI chat app"
-  default_prompt: "Use $develop-chatbot-next to implement an AI chat feature following this repository architecture."
