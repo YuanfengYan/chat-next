@@ -7,11 +7,43 @@
 ```bash
 pnpm install
 Copy-Item .env.example .env.local
-# 在 .env.local 中填写 DEEPSEEK_API_KEY 和 QIANFAN_API_KEY
+# 在 .env.local 中填写 DeepSeek、千帆以及数据库配置
 pnpm dev
 ```
 
 打开 <http://localhost:3000>。
+
+## PostgreSQL 与 Prisma
+
+请先在本机安装并启动 PostgreSQL，然后在 `.env.local` 中配置实际连接地址：
+
+```bash
+DATABASE_URL=postgresql://用户名:密码@localhost:5432/数据库名?schema=public
+```
+
+初始化数据库：
+
+```bash
+pnpm db:validate
+pnpm db:generate
+pnpm db:migrate
+```
+
+`DATABASE_URL` 必须仅在服务端环境中配置。Prisma CLI 会通过 `prisma.config.ts` 加载项目根目录的 `.env.local`。切换到 Vercel 或云服务器时，只需在对应部署环境配置新的 `DATABASE_URL`，再执行：
+
+```bash
+pnpm db:deploy
+```
+
+常用数据库命令：
+
+- `pnpm db:generate`：根据 schema 生成类型安全客户端。
+- `pnpm db:validate`：校验 Prisma schema。
+- `pnpm db:migrate`：创建并应用本地开发迁移。
+- `pnpm db:deploy`：在部署环境应用已有迁移。
+- `pnpm db:studio`：打开 Prisma Studio。
+
+当前数据库层仅提供 schema、迁移和 server-only Prisma Client，聊天仍由 `LocalSessionRepository` 持久化到浏览器 localStorage。
 
 ## 工程命令
 
@@ -26,9 +58,8 @@ pnpm build
 
 - `src/features/chat`：聊天组件、控制器、Store、Repository 和消息渲染器。
 - `src/lib/ai`：模型目录、Transport、错误协议和服务端 Provider Registry。
+- `src/lib/db`：仅服务端可用的数据库连接入口。
 - `src/components/ui`：shadcn/ui 基础组件。
-- `.agents/skills/develop-chatbot-next`：供 Codex 使用的项目开发规范。
+- `prisma`：数据库 schema 和版本化迁移。
 
-会话目前存储在浏览器 localStorage；通过实现 `SessionRepository` 可以切换到服务端持久化。模型密钥仅由 `/api/chat` 服务端路由读取，不会发送到浏览器。
-
-联网搜索由模型按需调用 `webSearch` Tool，通过百度千帆 AI 搜索完成。可使用 `QIANFAN_SEARCH_MODEL` 调整搜索总结模型，默认值为 `ernie-4.5-turbo-32k`。
+模型密钥只由服务端路由读取，不会发送到浏览器。数据库中的平台凭据字段只允许保存服务端加密后的内容，禁止写入明文密钥。

@@ -1,0 +1,460 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  PENDING
+}
+
+enum ChatSessionStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum MessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ToolKind {
+  HTTP
+}
+
+enum HttpMethod {
+  GET
+  POST
+  PUT
+  PATCH
+  DELETE
+}
+
+/// 平台用户；客户端用户和运营人员共享同一身份主体。
+model User {
+  id          String     @id @default(uuid()) @db.Uuid
+  email       String     @unique @db.VarChar(320)
+  displayName String?    @db.VarChar(100)
+  avatarUrl   String?    @db.VarChar(2048)
+  status      UserStatus @default(ACTIVE)
+  lastLoginAt DateTime?  @db.Timestamptz(3)
+  deletedAt   DateTime?  @db.Timestamptz(3)
+  createdAt   DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime   @updatedAt @db.Timestamptz(3)
+
+  roles                 UserRole[]
+  chatSessions          ChatSession[]
+  usageRecords          UsageRecord[]
+  createdPrompts        PromptTemplate[] @relation("PromptCreator")
+  createdPromptVersions PromptVersion[]  @relation("PromptVersionCreator")
+  createdTools          Tool[]           @relation("ToolCreator")
+  createdToolVersions   ToolVersion[]    @relation("ToolVersionCreator")
+  auditLogs             AuditLog[]       @relation("AuditActor")
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([deletedAt])
+}
+
+/// RBAC 角色，可由运营后台动态维护。
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(80)
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(500)
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+/// 细粒度后台权限，例如 model.read、tool.write。
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(120)
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  roles RolePermission[]
+}
+
+model UserRole {
+  userId     String   @db.Uuid
+  roleId     String   @db.Uuid
+  assignedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+/// 模型供应商的非敏感元数据；密钥由 PlatformCredential 单独保存。
+model AiProvider {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique @db.VarChar(80)
+  name      String   @db.VarChar(100)
+  baseUrl   String?  @db.VarChar(2048)
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  models      Model[]
+  credentials PlatformCredential[]
+
+  @@index([isEnabled, name])
+}
+
+/// 可在客户端切换的模型目录及其默认运行参数。
+model Model {
+  id              String   @id @default(uuid()) @db.Uuid
+  providerId      String   @db.Uuid
+  key             String   @unique @db.VarChar(120)
+  providerModelId String   @db.VarChar(200)
+  name            String   @db.VarChar(120)
+  description     String?  @db.VarChar(1000)
+  capabilities    Json     @default("{}") @db.JsonB
+  defaultParams   Json     @default("{}") @db.JsonB
+  contextWindow   Int?
+  maxOutputTokens Int?
+  sortOrder       Int      @default(0)
+  isEnabled       Boolean  @default(true)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+
+  provider     AiProvider     @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  prices       ModelPricing[]
+  chatSessions ChatSession[]
+  generations  Generation[]
+  usageRecords UsageRecord[]
+  tools        ModelTool[]
+
+  @@unique([providerId, providerModelId])
+  @@index([isEnabled, sortOrder, name])
+  @@index([providerId, isEnabled])
+}
+
+/// 模型分时价格，单位由 currency 和 perTokens 共同定义。
+model ModelPricing {
+  id                    String    @id @default(uuid()) @db.Uuid
+  modelId               String    @db.Uuid
+  currency              String    @default("USD") @db.VarChar(3)
+  perTokens             Int       @default(1000000)
+  inputTokenPrice       Decimal   @default(0) @db.Decimal(20, 10)
+  outputTokenPrice      Decimal   @default(0) @db.Decimal(20, 10)
+  cachedInputTokenPrice Decimal?  @db.Decimal(20, 10)
+  effectiveFrom         DateTime  @db.Timestamptz(3)
+  effectiveTo           DateTime? @db.Timestamptz(3)
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+
+  model Model @relation(fields: [modelId], references: [id], onDelete: Restrict)
+
+  @@unique([modelId, effectiveFrom])
+  @@index([modelId, effectiveFrom(sort: Desc)])
+}
+
+/// 可复用提示词的稳定身份。
+model PromptTemplate {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(120)
+  name        String   @db.VarChar(120)
+  description String?  @db.VarChar(1000)
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  createdBy User?           @relation("PromptCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  versions  PromptVersion[]
+}
+
+/// 提示词不可变版本；发布新内容时创建新版本而非覆盖历史。
+model PromptVersion {
+  id          String        @id @default(uuid()) @db.Uuid
+  templateId  String        @db.Uuid
+  version     Int
+  content     String        @db.Text
+  variables   Json          @default("{}") @db.JsonB
+  status      PublishStatus @default(DRAFT)
+  createdById String?       @db.Uuid
+  publishedAt DateTime?     @db.Timestamptz(3)
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+
+  template     PromptTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdBy    User?          @relation("PromptVersionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  chatSessions ChatSession[]
+  generations  Generation[]
+
+  @@unique([templateId, version])
+  @@index([templateId, status, version(sort: Desc)])
+}
+
+/// 用户对话；当前版本仅建表，不替换 LocalSessionRepository。
+model ChatSession {
+  id              String            @id @default(uuid()) @db.Uuid
+  userId          String            @db.Uuid
+  modelId         String            @db.Uuid
+  promptVersionId String?           @db.Uuid
+  title           String            @default("新对话") @db.VarChar(200)
+  status          ChatSessionStatus @default(ACTIVE)
+  deletedAt       DateTime?         @db.Timestamptz(3)
+  createdAt       DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @db.Timestamptz(3)
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  model         Model          @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  promptVersion PromptVersion? @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
+  messages      ChatMessage[]
+  generations   Generation[]
+  usageRecords  UsageRecord[]
+
+  @@index([userId, deletedAt, updatedAt(sort: Desc)])
+  @@index([modelId, createdAt(sort: Desc)])
+  @@index([status, updatedAt(sort: Desc)])
+}
+
+/// AI SDK UIMessage 的持久化形式，parts 原样存为 JSONB。
+model ChatMessage {
+  id        String      @id @default(uuid()) @db.Uuid
+  sessionId String      @db.Uuid
+  sequence  Int
+  role      MessageRole
+  parts     Json        @db.JsonB
+  metadata  Json?       @db.JsonB
+  createdAt DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime    @updatedAt @db.Timestamptz(3)
+
+  session         ChatSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  responseForRuns Generation[]     @relation("GenerationResponse")
+  toolInvocations ToolInvocation[]
+
+  @@unique([sessionId, sequence])
+  @@index([sessionId, createdAt])
+}
+
+/// 一次模型调用及其配置快照，失败和重试均各自保留记录。
+model Generation {
+  id                String          @id @default(uuid()) @db.Uuid
+  sessionId         String          @db.Uuid
+  modelId           String          @db.Uuid
+  promptVersionId   String?         @db.Uuid
+  responseMessageId String?         @db.Uuid
+  status            ExecutionStatus @default(PENDING)
+  configSnapshot    Json            @default("{}") @db.JsonB
+  finishReason      String?         @db.VarChar(100)
+  providerRequestId String?         @db.VarChar(255)
+  errorCode         String?         @db.VarChar(100)
+  errorMessage      String?         @db.VarChar(1000)
+  durationMs        Int?
+  startedAt         DateTime?       @db.Timestamptz(3)
+  finishedAt        DateTime?       @db.Timestamptz(3)
+  createdAt         DateTime        @default(now()) @db.Timestamptz(3)
+
+  session         ChatSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  model           Model            @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  promptVersion   PromptVersion?   @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
+  responseMessage ChatMessage?     @relation("GenerationResponse", fields: [responseMessageId], references: [id], onDelete: SetNull)
+  toolInvocations ToolInvocation[]
+  usageRecord     UsageRecord?
+
+  @@index([sessionId, createdAt(sort: Desc)])
+  @@index([modelId, status, createdAt(sort: Desc)])
+  @@index([providerRequestId])
+}
+
+/// 声明式工具的稳定身份；不允许保存可执行脚本。
+model Tool {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(120)
+  name        String   @db.VarChar(120)
+  description String?  @db.VarChar(1000)
+  kind        ToolKind @default(HTTP)
+  isEnabled   Boolean  @default(true)
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  createdBy User?         @relation("ToolCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  versions  ToolVersion[]
+  models    ModelTool[]
+
+  @@index([isEnabled, name])
+}
+
+/// HTTP 工具版本，URL、请求模板和 Schema 均需在执行前校验。
+model ToolVersion {
+  id               String        @id @default(uuid()) @db.Uuid
+  toolId           String        @db.Uuid
+  version          Int
+  status           PublishStatus @default(DRAFT)
+  method           HttpMethod
+  endpointTemplate String        @db.VarChar(2048)
+  requestTemplate  Json          @default("{}") @db.JsonB
+  inputSchema      Json          @db.JsonB
+  outputSchema     Json?         @db.JsonB
+  timeoutMs        Int           @default(15000)
+  maxResponseBytes Int           @default(1048576)
+  createdById      String?       @db.Uuid
+  publishedAt      DateTime?     @db.Timestamptz(3)
+  createdAt        DateTime      @default(now()) @db.Timestamptz(3)
+
+  tool        Tool             @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdBy   User?            @relation("ToolVersionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  invocations ToolInvocation[]
+  credentials ToolCredential[]
+
+  @@unique([toolId, version])
+  @@index([toolId, status, version(sort: Desc)])
+}
+
+/// 模型与工具的可用关系及参数覆盖。
+model ModelTool {
+  modelId        String  @db.Uuid
+  toolId         String  @db.Uuid
+  isEnabled      Boolean @default(true)
+  configOverride Json    @default("{}") @db.JsonB
+
+  model Model @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  tool  Tool  @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@id([modelId, toolId])
+  @@index([toolId, isEnabled])
+}
+
+/// 平台级加密凭据；encryptedPayload 只能写入服务端加密后的内容。
+model PlatformCredential {
+  id               String    @id @default(uuid()) @db.Uuid
+  providerId       String?   @db.Uuid
+  key              String    @unique @db.VarChar(120)
+  purpose          String    @db.VarChar(120)
+  encryptedPayload Bytes
+  keyVersion       Int       @default(1)
+  rotatedAt        DateTime? @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
+
+  provider AiProvider?      @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  tools    ToolCredential[]
+
+  @@index([providerId, purpose])
+}
+
+model ToolCredential {
+  toolVersionId String @db.Uuid
+  credentialId  String @db.Uuid
+  alias         String @db.VarChar(80)
+
+  toolVersion ToolVersion        @relation(fields: [toolVersionId], references: [id], onDelete: Cascade)
+  credential  PlatformCredential @relation(fields: [credentialId], references: [id], onDelete: Restrict)
+
+  @@id([toolVersionId, credentialId])
+  @@unique([toolVersionId, alias])
+  @@index([credentialId])
+}
+
+/// 结构化工具调用记录；用于来源展示、失败排查和运营统计。
+model ToolInvocation {
+  id            String          @id @default(uuid()) @db.Uuid
+  generationId  String          @db.Uuid
+  messageId     String?         @db.Uuid
+  toolVersionId String          @db.Uuid
+  callId        String          @db.VarChar(255)
+  status        ExecutionStatus @default(PENDING)
+  input         Json            @db.JsonB
+  output        Json?           @db.JsonB
+  errorCode     String?         @db.VarChar(100)
+  errorMessage  String?         @db.VarChar(1000)
+  durationMs    Int?
+  startedAt     DateTime?       @db.Timestamptz(3)
+  finishedAt    DateTime?       @db.Timestamptz(3)
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+
+  generation  Generation   @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  message     ChatMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  toolVersion ToolVersion  @relation(fields: [toolVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([generationId, callId])
+  @@index([toolVersionId, status, createdAt(sort: Desc)])
+  @@index([messageId])
+}
+
+/// 不可变用量流水；价格快照保证历史成本不受调价影响。
+model UsageRecord {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  sessionId         String?  @db.Uuid
+  generationId      String?  @unique @db.Uuid
+  modelId           String   @db.Uuid
+  inputTokens       Int      @default(0)
+  outputTokens      Int      @default(0)
+  cachedInputTokens Int      @default(0)
+  reasoningTokens   Int      @default(0)
+  requestCount      Int      @default(1)
+  currency          String   @default("USD") @db.VarChar(3)
+  inputTokenPrice   Decimal  @default(0) @db.Decimal(20, 10)
+  outputTokenPrice  Decimal  @default(0) @db.Decimal(20, 10)
+  totalCost         Decimal  @default(0) @db.Decimal(20, 8)
+  occurredAt        DateTime @default(now()) @db.Timestamptz(3)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  session    ChatSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  generation Generation?  @relation(fields: [generationId], references: [id], onDelete: SetNull)
+  model      Model        @relation(fields: [modelId], references: [id], onDelete: Restrict)
+
+  @@index([userId, occurredAt(sort: Desc)])
+  @@index([modelId, occurredAt(sort: Desc)])
+  @@index([sessionId, occurredAt(sort: Desc)])
+}
+
+/// 运营后台审计日志，仅保存必要摘要，禁止记录密钥与完整敏感载荷。
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  actorId      String?  @db.Uuid
+  action       String   @db.VarChar(120)
+  resourceType String   @db.VarChar(100)
+  resourceId   String?  @db.VarChar(255)
+  summary      Json?    @db.JsonB
+  ipAddress    String?  @db.Inet
+  userAgent    String?  @db.VarChar(1000)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([resourceType, resourceId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+}
