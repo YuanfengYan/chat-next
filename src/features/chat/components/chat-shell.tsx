@@ -11,10 +11,10 @@ import { useChatController } from "@/features/chat/hooks/use-chat-controller";
 import { userFacingError } from "@/lib/ai/errors";
 
 // 聊天工作台外壳组件
-export function ChatShell({ sessionId }: { sessionId: string }) {
+export function ChatShell({ sessionId, user }: { sessionId: string; user: { name: string; email: string; image?: string | null } }) {
     const controller = useChatController(sessionId);
     const streaming = controller.status === "streaming" || controller.status === "submitted";
-    const sidebar = <ConversationSidebar sessions={controller.summaries} activeId={sessionId} onCreate={controller.createNew} onSelect={controller.select} onDelete={controller.remove} />;
+    const sidebar = <ConversationSidebar sessions={controller.summaries} activeId={sessionId} user={user} onCreate={controller.createNew} onSelect={controller.select} onDelete={controller.remove} />;
     return (
         <div className="flex h-dvh overflow-hidden bg-background">
             <div className="hidden w-72 shrink-0 border-r lg:block">{sidebar}</div>

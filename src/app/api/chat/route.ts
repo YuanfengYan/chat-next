@@ -5,6 +5,7 @@ import { apiError } from "@/lib/ai/errors";
 import { isModelId } from "@/lib/ai/models";
 import { resolveModel } from "@/lib/ai/provider-registry.server";
 import { chatTools } from "@/lib/ai/tools/web-search.server";
+import { auth } from "@/lib/auth/auth.server";
 
 export const maxDuration = 90;
 const requestSchema = z.object({
@@ -15,6 +16,8 @@ const requestSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session) return apiError({ code: "AUTH_REQUIRED", message: "登录状态已失效，请重新登录。", retryable: false }, 401);
     const json: unknown = await request.json();
     if (JSON.stringify(json).length > 500_000) return apiError({ code: "INVALID_REQUEST", message: "对话内容过长。", retryable: false }, 413);
     const parsed = requestSchema.safeParse(json);

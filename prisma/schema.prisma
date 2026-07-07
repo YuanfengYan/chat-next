@@ -54,7 +54,8 @@ enum HttpMethod {
 model User {
   id          String     @id @default(uuid()) @db.Uuid
   email       String     @unique @db.VarChar(320)
-  displayName String?    @db.VarChar(100)
+  displayName String     @db.VarChar(100)
+  emailVerified Boolean  @default(false)
   avatarUrl   String?    @db.VarChar(2048)
   status      UserStatus @default(ACTIVE)
   lastLoginAt DateTime?  @db.Timestamptz(3)
@@ -70,9 +71,63 @@ model User {
   createdTools          Tool[]           @relation("ToolCreator")
   createdToolVersions   ToolVersion[]    @relation("ToolVersionCreator")
   auditLogs             AuditLog[]       @relation("AuditActor")
+  authAccounts          Account[]
+  authSessions          AuthSession[]
 
   @@index([status, createdAt(sort: Desc)])
   @@index([deletedAt])
+}
+
+/// Better Auth 登录凭据；密码哈希仅保存在该服务端表中。
+model Account {
+  id                    String    @id @default(uuid()) @db.Uuid
+  accountId             String    @db.VarChar(255)
+  providerId            String    @db.VarChar(100)
+  userId                String    @db.Uuid
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
+  scope                  String?   @db.Text
+  password               String?   @db.Text
+  createdAt              DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime  @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@unique([providerId, accountId])
+}
+
+/// Better Auth 数据库会话；Cookie 中只保存不可读的会话令牌。
+model AuthSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @unique @db.VarChar(255)
+  userId    String   @db.Uuid
+  expiresAt DateTime @db.Timestamptz(3)
+  ipAddress String?  @db.VarChar(64)
+  userAgent String?  @db.VarChar(1000)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Better Auth 一次性验证记录，为后续邮箱验证与密码找回保留标准能力。
+model Verification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String   @db.VarChar(320)
+  value      String   @db.Text
+  expiresAt  DateTime @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@index([expiresAt])
 }
 
 /// RBAC 角色，可由运营后台动态维护。

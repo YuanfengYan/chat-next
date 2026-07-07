@@ -1,13 +1,30 @@
 "use client";
-/** 会话侧栏：纯展示会话摘要，并通过回调发出创建、切换和删除意图。 */
-import { MessageSquare, MoreHorizontal, Plus, Sparkles, Trash2 } from "lucide-react";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { LogOut, MessageSquare, MoreHorizontal, Plus, Sparkles, Trash2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SessionSummary } from "@/features/chat/types/chat";
+import { authClient } from "@/lib/auth/auth-client";
 import { cn } from "@/lib/utils";
 
-export function ConversationSidebar({ sessions, activeId, onCreate, onSelect, onDelete }: { sessions: SessionSummary[]; activeId: string; onCreate: () => void; onSelect: (id: string) => void; onDelete: (id: string) => void }) {
+type SidebarUser = { name: string; email: string; image?: string | null };
+
+/** 会话侧栏：展示本地会话摘要和当前登录用户，并发出会话操作意图。 */
+export function ConversationSidebar({ sessions, activeId, user, onCreate, onSelect, onDelete }: { sessions: SessionSummary[]; activeId: string; user: SidebarUser; onCreate: () => void; onSelect: (id: string) => void; onDelete: (id: string) => void }) {
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function signOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    await authClient.signOut();
+    router.replace("/auth");
+    router.refresh();
+  }
+
   return <aside className="flex h-full w-full flex-col bg-muted/35">
     <div className="flex h-16 items-center gap-2 px-4"><div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Sparkles className="size-4" /></div><span className="font-semibold tracking-tight">DeepChat</span></div>
     <div className="px-3 pb-3"><Button variant="outline" className="w-full justify-start bg-background" onClick={onCreate}><Plus className="size-4" />新对话</Button></div>
@@ -18,6 +35,12 @@ export function ConversationSidebar({ sessions, activeId, onCreate, onSelect, on
       </div>)}
       {!sessions.length && <p className="px-3 py-8 text-center text-xs text-muted-foreground">还没有历史对话</p>}
     </div></ScrollArea>
-    <div className="border-t px-4 py-3 text-xs text-muted-foreground">消息仅保存在当前浏览器</div>
+    <div className="border-t p-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild><button className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition hover:bg-accent"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/12 text-sm font-semibold text-primary">{user.name.slice(0, 1).toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{user.name}</span><span className="block truncate text-xs text-muted-foreground">{user.email}</span></span><MoreHorizontal className="size-4 text-muted-foreground" /></button></DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="top" className="w-56"><DropdownMenuItem disabled><UserRound className="size-4" />当前账户</DropdownMenuItem><DropdownMenuItem className="text-destructive" disabled={signingOut} onSelect={() => void signOut()}><LogOut className="size-4" />{signingOut ? "正在退出…" : "退出登录"}</DropdownMenuItem></DropdownMenuContent>
+      </DropdownMenu>
+      <p className="px-2 pb-1 pt-2 text-[11px] text-muted-foreground">消息仅保存在当前浏览器</p>
+    </div>
   </aside>;
 }
