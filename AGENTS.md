@@ -25,7 +25,7 @@ For simple refactors, UI-only changes, naming changes, or TypeScript cleanup tha
 
 ## 架构边界
 
-- 页面和路由只负责参数解析与模块组合，聊天业务放在 `src/features/chat`。
+- 页面和路由只负责参数解析与模块组合，聊天业务放在 `src/features/chat`，后台。
 - 业务组件不得直接访问 localStorage、模型供应商 SDK、环境变量或服务端 Provider。
 - 使用 `useChatController` 统一协调 AI SDK 流式消息、Zustand 状态、会话仓库和路由切换。
 - 流式消息由 AI SDK `useChat` 管理；全局 Store 只保存会话摘要和 UI 状态，不保存流对象、Repository 实例或完整消息历史。
@@ -36,7 +36,7 @@ For simple refactors, UI-only changes, naming changes, or TypeScript cleanup tha
 ## 消息与工具扩展
 
 - 消息统一使用 AI SDK `UIMessage`，并按 `parts` 独立渲染。
-- 新增 reasoning、tool、source、data 或 file 类型时，应增加专用 Part Renderer，并保留未知类型的安全降级界面。
+- 新增  reasoning、tool、source、data 或 file 类型时，应增加专用 Part Renderer，并保留未知类型的安全降级界面。
 - 输入草稿保持文本与附件可扩展结构，不把输入能力退化为单一字符串接口。
 - 可执行 Tool 必须位于服务端 AI 模块，密钥不得传入客户端或写入日志。
 - `webSearch` 使用百度千帆联网搜索，必须返回结构化来源，支持模型引用与前端来源卡片展示。
