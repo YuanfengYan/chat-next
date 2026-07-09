@@ -7,9 +7,11 @@ import { getCurrentSession } from "@/lib/auth/session.server";
 export const metadata: Metadata = { title: "登录 | DeepChat", description: "登录或注册 DeepChat" };
 
 /** 认证入口页：服务端处理会话重定向，客户端表单负责交互。 */
-export default async function AuthPage({ searchParams }: { searchParams: Promise<{ mode?: string }> }) {
+export default async function AuthPage({ searchParams }: { searchParams: Promise<{ mode?: string; error?: string }> }) {
   if (await getCurrentSession()) redirect("/");
-  const mode = (await searchParams).mode === "register" ? "register" : "login";
+  const query = await searchParams;
+  const mode = query.mode === "register" ? "register" : "login";
+  const githubEnabled = Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET);
 
   return (
     <main className="grid min-h-dvh bg-background lg:grid-cols-[1.05fr_0.95fr]">
@@ -29,7 +31,7 @@ export default async function AuthPage({ searchParams }: { searchParams: Promise
       </section>
       <section className="relative flex items-center justify-center px-5 py-10 sm:px-10 lg:px-16">
         <div className="absolute left-5 top-5 flex items-center gap-2 lg:hidden"><span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Sparkles className="size-4" /></span><span className="font-semibold">DeepChat</span></div>
-        <AuthForm key={mode} mode={mode} />
+        <AuthForm key={mode} mode={mode} githubEnabled={githubEnabled} oauthError={Boolean(query.error)} />
       </section>
     </main>
   );

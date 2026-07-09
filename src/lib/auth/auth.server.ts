@@ -6,6 +6,9 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "@/lib/db/prisma.server";
 import { signInSchema, signUpSchema } from "@/lib/auth/validation";
 
+const githubClientId = process.env.GITHUB_CLIENT_ID;
+const githubClientSecret = process.env.GITHUB_CLIENT_SECRET;
+
 /** 服务端认证实例：统一管理邮箱密码、数据库会话与认证安全策略。 */
 export const auth = betterAuth({
   appName: "DeepChat",
@@ -19,6 +22,15 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     maxPasswordLength: 128,
   },
+  socialProviders: {
+    ...(githubClientId && githubClientSecret ? {
+      github: {
+        clientId: githubClientId,
+        clientSecret: githubClientSecret,
+        scope: ["user:email"],
+      },
+    } : {}),
+  },
   user: {
     modelName: "User",
     fields: {
@@ -30,11 +42,26 @@ export const auth = betterAuth({
     modelName: "AuthSession",
     expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24,
+     cookieCache: {
+    enabled: true,
+    maxAge: 5 * 60,
+  },
   },
   account: { modelName: "Account" }, 
   verification: { modelName: "Verification" },
   advanced: {
     database: { generateId: "uuid" },
+  },
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { status: true } });
+          if (user?.status === "DISABLED") return false;
+          return { data: session };
+        },
+      },
+    },
   },
   hooks: {
     before: createAuthMiddleware(async (context) => {
