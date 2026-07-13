@@ -25,11 +25,22 @@ function writeSessions(sessions: ChatSession[]) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, sessions }));
 }
 
+/** 移除临时图片内容，仅保留可用于历史记录降级展示的附件元数据。 */
+export function sanitizeSessionForStorage(session: ChatSession): ChatSession {
+  return {
+    ...session,
+    messages: session.messages.map((message) => ({
+      ...message,
+      parts: message.parts.map((part) => part.type === "file" ? { ...part, url: "attachment:expired" } : part),
+    })),
+  };
+}
+
 /** 基于 localStorage 的首版持久化实现，保持异步接口以便未来替换远程仓库。 */
 export class LocalSessionRepository implements SessionRepository {
   async list(): Promise<SessionSummary[]> { return readSessions().map(toSummary).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)); }
   async get(id: string) { return readSessions().find((session) => session.id === id) ?? null; }
-  async save(session: ChatSession) { const sessions = readSessions(); const index = sessions.findIndex((item) => item.id === session.id); if (index >= 0) sessions[index] = session; else sessions.push(session); writeSessions(sessions); }
+  async save(session: ChatSession) { const sessions = readSessions(); const stored = sanitizeSessionForStorage(session); const index = sessions.findIndex((item) => item.id === session.id); if (index >= 0) sessions[index] = stored; else sessions.push(stored); writeSessions(sessions); }
   async remove(id: string) { writeSessions(readSessions().filter((session) => session.id !== id)); }
 }
 /** 应用共享的本地会话仓库实例；业务组件通过控制器间接使用。 */

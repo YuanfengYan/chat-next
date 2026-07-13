@@ -26,4 +26,13 @@ describe("LocalSessionRepository", () => {
     localStorage.setItem(STORAGE_KEY, "not-json");
     expect(await new LocalSessionRepository().list()).toEqual([]);
   });
+
+  it("removes temporary image data before persistence", async () => {
+    const session = createSession("image-chat");
+    session.messages = [{ id: "m1", role: "user", parts: [{ type: "file", mediaType: "image/png", filename: "test.png", url: "data:image/png;base64,secret" }] }];
+    await new LocalSessionRepository().save(session);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? "";
+    expect(raw).not.toContain("secret");
+    expect((await new LocalSessionRepository().get("image-chat"))?.messages[0].parts[0]).toEqual(expect.objectContaining({ url: "attachment:expired", filename: "test.png" }));
+  });
 });

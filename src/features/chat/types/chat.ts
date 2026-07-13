@@ -5,7 +5,7 @@ export interface ChatSession { id: string; title: string; modelId: string; messa
 /** 会话列表使用的轻量摘要，不包含消息正文。 */
 export type SessionSummary = Omit<ChatSession, "messages">;
 /** 尚未上传的附件描述，为后续多模态输入预留。 */
-export interface PendingAttachment { id: string; name: string; type: string; size: number; }
+export interface PendingAttachment { id: string; name: string; type: string; size: number; file: File; previewUrl: string; width: number; height: number; }
 /** 输入框草稿模型，文本之外可继续扩展附件等内容。 */
 export interface ChatDraft { text: string; attachments: PendingAttachment[]; }
 /** 会话持久化契约；本地存储和未来服务端存储都实现同一接口。 */

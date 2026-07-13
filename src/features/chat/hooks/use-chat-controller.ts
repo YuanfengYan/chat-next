@@ -1,6 +1,6 @@
 "use client";
 import { useChat } from "@ai-sdk/react";
-import type { UIMessage } from "ai";
+import type { FileUIPart, UIMessage } from "ai";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { localSessionRepository } from "@/features/chat/repositories/local-session-repository";
@@ -74,16 +74,20 @@ export function useChatController(sessionId: string) {
     }, [sessionId]);
 
     const send = useCallback(
-        (draft: ChatDraft) => {
+        async (draft: ChatDraft) => {
             const current = sessionRef.current;
-            if (!current || !draft.text.trim()) return;
+            if (!current || (!draft.text.trim() && !draft.attachments.length)) return;
             if (!current.messages.length) {
                 const next = { ...current, title: titleFromText(draft.text), updatedAt: new Date().toISOString() };
                 sessionRef.current = next;
                 setSession(next);
                 upsertSummary(toSummary(next));
             }
-            void chat.sendMessage({ text: draft.text }, { body: { modelId: current.modelId } });
+            const files: FileUIPart[] = await Promise.all(draft.attachments.map(async (item) => ({
+                type: "file" as const, mediaType: item.type, filename: item.name,
+                url: await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(item.file); }),
+            })));
+            await chat.sendMessage(draft.text.trim() ? { text: draft.text, files } : { files }, { body: { modelId: current.modelId } });
         },
         [chat, upsertSummary],
     );

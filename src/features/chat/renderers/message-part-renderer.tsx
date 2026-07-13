@@ -4,11 +4,18 @@ import type { UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { WebSearchPart } from "@/features/chat/renderers/web-search-part";
+import { ImageRecognitionPart } from "@/features/chat/renderers/image-recognition-part";
 
 type MessagePart = UIMessage["parts"][number];
 export function MessagePartRenderer({ part }: { part: MessagePart }) {
     if ((part as { type: string }).type === "tool-webSearch") 
       return <WebSearchPart part={part as unknown as React.ComponentProps<typeof WebSearchPart>["part"]} />;
+    if ((part as { type: string }).type === "tool-imageRecognition")
+      return <ImageRecognitionPart part={part as unknown as React.ComponentProps<typeof ImageRecognitionPart>["part"]} />;
+    if (part.type === "file") {
+      if (part.url === "attachment:expired") return <div className="my-2 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">图片附件已失效：{part.filename ?? "未命名图片"}</div>;
+      return <a href={part.url} target="_blank" rel="noreferrer" className="my-2 block"><img src={part.url} alt={part.filename ?? "用户上传的图片"} className="max-h-72 max-w-full rounded-xl border object-contain" /></a>;
+    }
     if (part.type === "text")
         return (
             <ReactMarkdown

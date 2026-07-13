@@ -83,4 +83,3 @@ export const webSearchTool = tool({
 });
 
 /** 当前聊天接口允许执行的工具白名单。 */
-export const chatTools = { webSearch: webSearchTool };
