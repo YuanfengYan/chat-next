@@ -87,7 +87,7 @@ export function useChatController(sessionId: string) {
                 type: "file" as const, mediaType: item.type, filename: item.name,
                 url: await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(item.file); }),
             })));
-            await chat.sendMessage(draft.text.trim() ? { text: draft.text, files } : { files }, { body: { modelId: current.modelId } });
+            await chat.sendMessage(draft.text.trim() ? { text: draft.text, files } : { files }, { body: { modelId: current.modelId, skillIds: current.skillIds } });
         },
         [chat, upsertSummary],
     );
@@ -97,8 +97,24 @@ export function useChatController(sessionId: string) {
     }, [chat, persist]);
     const retry = useCallback(() => {
         const current = sessionRef.current;
-        if (current) void chat.regenerate({ body: { modelId: current.modelId } });
+        if (current) void chat.regenerate({ body: { modelId: current.modelId, skillIds: current.skillIds } });
     }, [chat]);
+    const updateConfiguration = useCallback(async (changes: Partial<Pick<ChatSession, "modelId" | "skillIds">>) => {
+        const current = sessionRef.current;
+        if (!current) return;
+        const next = { ...current, ...changes, updatedAt: new Date().toISOString() };
+        sessionRef.current = next;
+        setSession(next);
+        upsertSummary(toSummary(next));
+        await localSessionRepository.save(next);
+    }, [upsertSummary]);
+    const setModelId = useCallback((modelId: string) => { void updateConfiguration({ modelId }); }, [updateConfiguration]);
+    const toggleSkill = useCallback((skillId: string) => {
+        const current = sessionRef.current;
+        if (!current) return;
+        const skillIds = current.skillIds.includes(skillId) ? current.skillIds.filter((id) => id !== skillId) : [...current.skillIds, skillId];
+        void updateConfiguration({ skillIds });
+    }, [updateConfiguration]);
     const createNew = useCallback(() => {
         const next = createSession();
         setSidebarOpen(false);
@@ -138,6 +154,8 @@ export function useChatController(sessionId: string) {
         send,
         stop,
         retry,
+        setModelId,
+        toggleSkill,
         createNew,
         select,
         remove,

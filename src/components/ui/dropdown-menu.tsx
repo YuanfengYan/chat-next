@@ -4,6 +4,11 @@ import * as DropdownPrimitive from "@radix-ui/react-dropdown-menu";
 import { cn } from "@/lib/utils";
 export const DropdownMenu = DropdownPrimitive.Root;
 export const DropdownMenuTrigger = DropdownPrimitive.Trigger;
+export const DropdownMenuLabel = DropdownPrimitive.Label;
+export const DropdownMenuSeparator = DropdownPrimitive.Separator;
+export function DropdownMenuCheckboxItem({ className, children, ...props }: React.ComponentProps<typeof DropdownPrimitive.CheckboxItem>) {
+    return <DropdownPrimitive.CheckboxItem className={cn("flex cursor-default select-none items-center gap-2 rounded-md px-2 py-2 text-sm outline-none focus:bg-accent data-[disabled]:opacity-50", className)} {...props}><DropdownPrimitive.ItemIndicator>✓</DropdownPrimitive.ItemIndicator>{children}</DropdownPrimitive.CheckboxItem>;
+}
 export function DropdownMenuContent({ className, sideOffset = 6, ...props }: React.ComponentProps<typeof DropdownPrimitive.Content>) {
     return (
         <DropdownPrimitive.Portal>

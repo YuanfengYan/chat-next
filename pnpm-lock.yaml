@@ -11,9 +11,18 @@ importers:
 
   .:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: ^4.0.15
+        version: 4.0.15(zod@4.4.3)
       '@ai-sdk/deepseek':
         specifier: ^3.0.1
         version: 3.0.5(zod@4.4.3)
+      '@ai-sdk/google':
+        specifier: ^4.0.17
+        version: 4.0.17(zod@4.4.3)
+      '@ai-sdk/openai':
+        specifier: ^4.0.15
+        version: 4.0.15(zod@4.4.3)
       '@ai-sdk/react':
         specifier: ^4.0.8
         version: 4.0.16(react@19.2.4)(zod@4.4.3)
@@ -150,6 +159,12 @@ packages:
   '@adobe/css-tools@4.5.0':
     resolution: {integrity: sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q==}
 
+  '@ai-sdk/anthropic@4.0.15':
+    resolution: {integrity: sha512-6iVlzqZjqqoHTmgO1WU9id/33pYykIRasWJFAMf1+d+nhju6d7566VRFsOGZ2W2GzgNtzKs8DGsYN7X5/wOGuw==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   '@ai-sdk/deepseek@3.0.5':
     resolution: {integrity: sha512-wV0JH4KG8YzIRHt9791+jEi+MhSoiUdRs/jeJYPcxVVw0841c4Ma2PS/iw79jVdoLaOC2M+92jWZ2qUz5LIHFg==}
     engines: {node: '>=22'}
@@ -162,8 +177,26 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
+  '@ai-sdk/google@4.0.17':
+    resolution: {integrity: sha512-90YMrWWIz7HVqrtthaP60fqGhsTT8OXHskxJ9sPmD/bFBHqdbOBrtS9oKBWjO0XBAY8eo2Rd7Ai8zGKCTvPn9Q==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   '@ai-sdk/mcp@2.0.7':
     resolution: {integrity: sha512-DX1v5M/R4RD2yi1KSH2ERLKcb6h2qJF0DKt0PGTTpNJNK+meXMmouwSRZS8Y+JocbyHk7U9p6PgqVmKU/e5XhQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/openai@4.0.15':
+    resolution: {integrity: sha512-JpTLQp5RUbRcs5nOyPEu5NRdxZLUnD/uCyT3qzy26D+iunCeL7KJV58ER9kwisAKnTjWravfNblaQNiWr20M9A==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/provider-utils@5.0.10':
+    resolution: {integrity: sha512-uPyec0+85dwxZYXtb8qe8gCjhjDfxP4LCDo/uRQS/iG+FIgYbHPRhr/ys281udG90bTaE18+5cxWraYaf8oHCw==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -176,6 +209,10 @@ packages:
 
   '@ai-sdk/provider@4.0.2':
     resolution: {integrity: sha512-pfPoy9J1B1xV7cqJ8MYHOsDYrMv5tR3+EMNfI249OhkD2uRakvav3Fo7XpD2luuN/YNCBY7KfEQc7vEV7KEtyw==}
+    engines: {node: '>=22'}
+
+  '@ai-sdk/provider@4.0.3':
+    resolution: {integrity: sha512-e0CpNWJUY7OxAFAnCZkw+ri9QOHWwTs1tXP42782KFGCU07qt8NiXCrCVowyCB5dP2r5/Uls+g2oPd8kOJn9dw==}
     engines: {node: '>=22'}
 
   '@ai-sdk/react@4.0.16':
@@ -4301,6 +4338,12 @@ snapshots:
 
   '@adobe/css-tools@4.5.0': {}
 
+  '@ai-sdk/anthropic@4.0.15(zod@4.4.3)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.3
+      '@ai-sdk/provider-utils': 5.0.10(zod@4.4.3)
+      zod: 4.4.3
+
   '@ai-sdk/deepseek@3.0.5(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.2
@@ -4314,11 +4357,31 @@ snapshots:
       '@vercel/oidc': 3.2.0
       zod: 4.4.3
 
+  '@ai-sdk/google@4.0.17(zod@4.4.3)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.3
+      '@ai-sdk/provider-utils': 5.0.10(zod@4.4.3)
+      zod: 4.4.3
+
   '@ai-sdk/mcp@2.0.7(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.2
       '@ai-sdk/provider-utils': 5.0.5(zod@4.4.3)
       pkce-challenge: 5.0.1
+      zod: 4.4.3
+
+  '@ai-sdk/openai@4.0.15(zod@4.4.3)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.3
+      '@ai-sdk/provider-utils': 5.0.10(zod@4.4.3)
+      zod: 4.4.3
+
+  '@ai-sdk/provider-utils@5.0.10(zod@4.4.3)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.3
+      '@standard-schema/spec': 1.1.0
+      '@workflow/serde': 4.1.0
+      eventsource-parser: 3.1.0
       zod: 4.4.3
 
   '@ai-sdk/provider-utils@5.0.5(zod@4.4.3)':
@@ -4330,6 +4393,10 @@ snapshots:
       zod: 4.4.3
 
   '@ai-sdk/provider@4.0.2':
+    dependencies:
+      json-schema: 0.4.0
+
+  '@ai-sdk/provider@4.0.3':
     dependencies:
       json-schema: 0.4.0
 

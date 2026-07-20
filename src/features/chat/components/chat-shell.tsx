@@ -27,6 +27,9 @@ export function ChatShell({ sessionId, user }: { sessionId: string; user: { name
             <main className="flex min-w-0 flex-1 flex-col">
                 <ChatToolbar
                     modelId={controller.session?.modelId ?? "deepseek-chat"}
+                    skillIds={controller.session?.skillIds ?? []}
+                    onModelChange={controller.setModelId}
+                    onToggleSkill={controller.toggleSkill}
                     onOpenSidebar={() => controller.setSidebarOpen(true)}
                     onRetry={controller.retry}
                     canRetry={controller.messages.some((message) => message.role === "assistant")}

@@ -5,7 +5,7 @@ import { toSummary, type ChatSession, type SessionRepository, type SessionSummar
 const STORAGE_KEY = "deepchat:sessions";
 const partSchema = z.object({ type: z.string() }).passthrough();
 const messageSchema = z.object({ id: z.string(), role: z.enum(["system", "user", "assistant"]), parts: z.array(partSchema) }).passthrough();
-const sessionSchema = z.object({ id: z.string(), title: z.string(), modelId: z.string(), messages: z.array(messageSchema), createdAt: z.string(), updatedAt: z.string() });
+const sessionSchema = z.object({ id: z.string(), title: z.string(), modelId: z.string(), skillIds: z.array(z.string()).default([]), messages: z.array(messageSchema), createdAt: z.string(), updatedAt: z.string() });
 const storageSchema = z.object({ version: z.literal(1), sessions: z.array(z.unknown()) });
 
 function readSessions(): ChatSession[] {

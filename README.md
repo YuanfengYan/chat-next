@@ -54,6 +54,12 @@ pnpm test
 pnpm build
 ```
 
+## 多模型与 Skill
+
+聊天服务通过服务端 `Brains` 单例统一调用 DeepSeek、OpenAI、Anthropic 与 Google 模型。按需在 `.env.local` 配置 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY` 和 `GOOGLE_GENERATIVE_AI_API_KEY`；未配置密钥的模型会在调用时返回标准错误。
+
+项目 Skill 位于 `skills/<skill-id>/SKILL.md`。Skill 只允许绑定服务端静态注册的工具，不会动态执行目录中的代码；详细格式见该目录的 README。
+
 ## 架构
 
 - `src/features/chat`：聊天组件、控制器、Store、Repository 和消息渲染器。

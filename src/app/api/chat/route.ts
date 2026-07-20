@@ -1,15 +1,16 @@
-import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from "ai";
+import type { UIMessage } from "ai";
 import { z } from "zod";
+import { getBrains } from "@/lib/ai/brains.server";
 import { apiError } from "@/lib/ai/errors";
 import { isModelId } from "@/lib/ai/models";
-import { resolveModel } from "@/lib/ai/provider-registry.server";
-import { createChatTools } from "@/lib/ai/tools/chat-tools.server";
+import { isSkillId } from "@/lib/ai/skills";
 import type { ValidatedChatImage } from "@/lib/ai/tools/image-recognition.server";
 import { auth } from "@/lib/auth/auth.server";
 
 export const maxDuration = 90;
 const requestSchema = z.object({
   id: z.string().min(1).max(128), modelId: z.string().default("deepseek-chat"),
+  skillIds: z.array(z.string()).max(5).default([]).transform((ids) => [...new Set(ids)]),
   messages: z.array(z.object({ id: z.string(), role: z.enum(["system", "user", "assistant"]), parts: z.array(z.object({ type: z.string() }).passthrough()) }).passthrough()).min(1).max(100),
 });
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/bmp"]);
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
     const parsed = requestSchema.safeParse(json);
     if (!parsed.success) return apiError({ code: "INVALID_REQUEST", message: "请求格式无效。", retryable: false }, 400);
     if (!isModelId(parsed.data.modelId)) return apiError({ code: "MODEL_NOT_ALLOWED", message: "不支持该模型。", retryable: false }, 400);
+    if (parsed.data.skillIds.some((id) => !isSkillId(id))) return apiError({ code: "SKILL_NOT_ALLOWED", message: "包含未注册的 Skill。", retryable: false }, 400);
 
     const messages = parsed.data.messages as UIMessage[];
     const lastUser = [...messages].reverse().find((message) => message.role === "user");
@@ -47,19 +49,14 @@ export async function POST(request: Request) {
     const decoded = fileParts.map(decodeImagePart);
     if (decoded.some((image) => !image)) return apiError({ code: "INVALID_REQUEST", message: "图片格式、内容或大小无效。", retryable: false }, 400);
     const images = decoded as ValidatedChatImage[];
-    const tools = createChatTools(images);
     const modelMessages = messages.map((message) => ({ ...message, parts: message.parts.filter((part) => part.type !== "file") })) as UIMessage[];
     if (lastUser && images.length) modelMessages.find((message) => message.id === lastUser.id)?.parts.push({ type: "text", text: `\n[用户上传了 ${images.length} 张图片，可使用 imageRecognition 工具按序号识别。]` });
 
-    const result = streamText({
-      model: resolveModel(parsed.data.modelId),
-      system: "你是严谨的 AI 助手。需要实时信息时调用 webSearch；用户要求读取、提取或定位上传图片中的文字时调用 imageRecognition。必须基于工具结果回答，不要编造信息或来源。",
-      messages: await convertToModelMessages(modelMessages, { tools, ignoreIncompleteToolCalls: true }), tools,
-      stopWhen: stepCountIs(4), abortSignal: request.signal,
-    });
-    return result.toUIMessageStreamResponse({ onError: (error) => error instanceof Error ? error.message : "DeepSeek 暂时不可用，请稍后重试。" });
+    const result = await getBrains().streamChat({ modelId: parsed.data.modelId, skillIds: parsed.data.skillIds, sessionId: parsed.data.id, messages: modelMessages, images, abortSignal: request.signal });
+    return result.toUIMessageStreamResponse({ onError: () => "模型服务暂时不可用，请稍后重试。" });
   } catch (error) {
-    if (error instanceof Error && error.message === "MISSING_API_KEY") return apiError({ code: "MISSING_API_KEY", message: "服务端尚未配置 DeepSeek API Key。", retryable: false }, 503);
+    if (error instanceof Error && error.message.startsWith("MISSING_API_KEY:")) return apiError({ code: "MISSING_API_KEY", message: "服务端尚未配置所选模型的 API Key。", retryable: false }, 503);
+    if (error instanceof Error && error.message === "SKILL_NOT_ALLOWED") return apiError({ code: "SKILL_NOT_ALLOWED", message: "包含未注册的 Skill。", retryable: false }, 400);
     return apiError({ code: "UPSTREAM_ERROR", message: "服务暂时不可用，请稍后重试。", retryable: true }, 502);
   }
 }

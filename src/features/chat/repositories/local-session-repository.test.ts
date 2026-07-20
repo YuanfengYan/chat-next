@@ -27,6 +27,13 @@ describe("LocalSessionRepository", () => {
     expect(await new LocalSessionRepository().list()).toEqual([]);
   });
 
+  it("migrates sessions created before skill selection existed", async () => {
+    const legacy = createSession("legacy") as Partial<ReturnType<typeof createSession>>;
+    delete legacy.skillIds;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, sessions: [legacy] }));
+    expect((await new LocalSessionRepository().get("legacy"))?.skillIds).toEqual([]);
+  });
+
   it("removes temporary image data before persistence", async () => {
     const session = createSession("image-chat");
     session.messages = [{ id: "m1", role: "user", parts: [{ type: "file", mediaType: "image/png", filename: "test.png", url: "data:image/png;base64,secret" }] }];
