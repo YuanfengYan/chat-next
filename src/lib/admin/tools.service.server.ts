@@ -3,6 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/db/prisma.server";
 import { formatAdminDateTime } from "@/lib/admin/format";
 import type { AdminToolInvocationLogItem, AdminToolListItem, AdminToolPermissionItem, AdminToolRuntimeConfigItem } from "@/lib/admin/types";
+import { ensureModelCatalog } from "@/lib/ai/model-catalog.server";
 
 /** 工具列表 DTO：隐藏版本 Schema、凭证和请求模板等敏感或复杂字段。 */
 export async function getAdminToolList(take = 50): Promise<AdminToolListItem[]> {
@@ -109,4 +110,15 @@ export async function getAdminToolRuntimeConfigs(): Promise<AdminToolRuntimeConf
     maxResponseBytes: version.maxResponseBytes,
     status: version.status,
   }));
+}
+
+/** 工具配置表单所需的非敏感选项与版本状态。 */
+export async function getAdminToolEditorData() {
+  await ensureModelCatalog();
+  const [tools, models, versions] = await Promise.all([
+    prisma.tool.findMany({ orderBy: { name: "asc" }, select: { id: true, key: true, name: true, isEnabled: true } }),
+    prisma.model.findMany({ orderBy: [{ provider: { name: "asc" } }, { name: "asc" }], select: { id: true, key: true, name: true } }),
+    prisma.toolVersion.findMany({ orderBy: [{ tool: { name: "asc" } }, { version: "desc" }], take: 100, select: { id: true, toolId: true, version: true, status: true, exampleInput: true, tool: { select: { name: true } }, credentials: { select: { alias: true } } } }),
+  ]);
+  return { tools, models, versions: versions.map((item) => ({ ...item, exampleInput: item.exampleInput as unknown, credentialAliases: item.credentials.map((credential) => credential.alias) })) };
 }

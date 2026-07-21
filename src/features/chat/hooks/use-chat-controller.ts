@@ -4,6 +4,7 @@ import type { FileUIPart, UIMessage } from "ai";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { localSessionRepository } from "@/features/chat/repositories/local-session-repository";
+import { cloudSessionRepository } from "@/features/chat/repositories/cloud-session-repository";
 import { useChatStore } from "@/features/chat/store/chat-store";
 import { createSession, titleFromText, toSummary, type ChatDraft, type ChatSession } from "@/features/chat/types/chat";
 import { createChatTransport } from "@/lib/ai/transport";
@@ -16,6 +17,7 @@ export function useChatController(sessionId: string) {
     const sessionRef = useRef<ChatSession | null>(null);
     const { summaries, setSummaries, upsertSummary, removeSummary, setActiveSessionId, sidebarOpen, setSidebarOpen, setHydrated } = useChatStore();
     const transport = useMemo(() => createChatTransport(), []);
+    const repositoryFor = useCallback((current: ChatSession) => current.storage === "cloud" ? cloudSessionRepository : localSessionRepository, []);
 
     // 当前会话的消息并持久化到本地存储
     const persist = useCallback(
@@ -26,9 +28,12 @@ export function useChatController(sessionId: string) {
             sessionRef.current = next;
             setSession(next);
             upsertSummary(toSummary(next));
-            await localSessionRepository.save(next);
+            const saved = await repositoryFor(next).save(next);
+            sessionRef.current = saved;
+            setSession(saved);
+            upsertSummary(toSummary(saved));
         },
-        [upsertSummary],
+        [repositoryFor, upsertSummary],
     );
 // 使用 AI SDK 的 useChat hook 管理消息流和状态
     const chat = useChat({
@@ -52,15 +57,17 @@ export function useChatController(sessionId: string) {
         async function load() {
             setLoading(true);
             let current = await localSessionRepository.get(sessionId);
+            if (!current) current = await cloudSessionRepository.get(sessionId);
             if (!current) {
-                current = createSession(sessionId);
-                await localSessionRepository.save(current);
+                current = createSession(sessionId, "cloud");
+                current = await cloudSessionRepository.create(current);
             }
             if (cancelled) return;
             sessionRef.current = current;
             setSession(current);
             chat.setMessages(current.messages);
-            setSummaries(await localSessionRepository.list());
+            const [local, cloud] = await Promise.all([localSessionRepository.list(), cloudSessionRepository.list()]);
+            setSummaries([...local, ...cloud].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
             setActiveSessionId(sessionId);
             setHydrated(true);
             setLoading(false);
@@ -87,7 +94,7 @@ export function useChatController(sessionId: string) {
                 type: "file" as const, mediaType: item.type, filename: item.name,
                 url: await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(item.file); }),
             })));
-            await chat.sendMessage(draft.text.trim() ? { text: draft.text, files } : { files }, { body: { modelId: current.modelId, skillIds: current.skillIds } });
+            await chat.sendMessage(draft.text.trim() ? { text: draft.text, files } : { files }, { body: { modelId: current.modelId, skillIds: current.skillIds, persistence: current.storage } });
         },
         [chat, upsertSummary],
     );
@@ -97,7 +104,7 @@ export function useChatController(sessionId: string) {
     }, [chat, persist]);
     const retry = useCallback(() => {
         const current = sessionRef.current;
-        if (current) void chat.regenerate({ body: { modelId: current.modelId, skillIds: current.skillIds } });
+        if (current) void chat.regenerate({ body: { modelId: current.modelId, skillIds: current.skillIds, persistence: current.storage } });
     }, [chat]);
     const updateConfiguration = useCallback(async (changes: Partial<Pick<ChatSession, "modelId" | "skillIds">>) => {
         const current = sessionRef.current;
@@ -106,8 +113,10 @@ export function useChatController(sessionId: string) {
         sessionRef.current = next;
         setSession(next);
         upsertSummary(toSummary(next));
-        await localSessionRepository.save(next);
-    }, [upsertSummary]);
+        const saved = await repositoryFor(next).save(next);
+        sessionRef.current = saved;
+        setSession(saved);
+    }, [repositoryFor, upsertSummary]);
     const setModelId = useCallback((modelId: string) => { void updateConfiguration({ modelId }); }, [updateConfiguration]);
     const toggleSkill = useCallback((skillId: string) => {
         const current = sessionRef.current;
@@ -131,7 +140,8 @@ export function useChatController(sessionId: string) {
     );
     const remove = useCallback(
         async (id: string) => {
-            await localSessionRepository.remove(id);
+            const target = summaries.find((item) => item.id === id);
+            await (target?.storage === "cloud" ? cloudSessionRepository : localSessionRepository).remove(id);
             removeSummary(id);
             if (id === sessionId) {
                 const next = summaries.find((item) => item.id !== id);

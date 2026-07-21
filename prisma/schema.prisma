@@ -42,6 +42,11 @@ enum ToolKind {
   HTTP
 }
 
+enum ToolInvocationContext {
+  CHAT
+  TEST
+}
+
 enum HttpMethod {
   GET
   POST
@@ -284,6 +289,8 @@ model ChatSession {
   modelId         String            @db.Uuid
   promptVersionId String?           @db.Uuid
   title           String            @default("新对话") @db.VarChar(200)
+  skillIds        Json              @default("[]") @db.JsonB
+  revision        Int               @default(0)
   status          ChatSessionStatus @default(ACTIVE)
   deletedAt       DateTime?         @db.Timestamptz(3)
   createdAt       DateTime          @default(now()) @db.Timestamptz(3)
@@ -305,6 +312,7 @@ model ChatSession {
 model ChatMessage {
   id        String      @id @default(uuid()) @db.Uuid
   sessionId String      @db.Uuid
+  externalId String     @db.VarChar(255)
   sequence  Int
   role      MessageRole
   parts     Json        @db.JsonB
@@ -317,6 +325,7 @@ model ChatMessage {
   toolInvocations ToolInvocation[]
 
   @@unique([sessionId, sequence])
+  @@unique([sessionId, externalId])
   @@index([sessionId, createdAt])
 }
 
@@ -380,6 +389,8 @@ model ToolVersion {
   requestTemplate  Json          @default("{}") @db.JsonB
   inputSchema      Json          @db.JsonB
   outputSchema     Json?         @db.JsonB
+  exampleInput     Json          @default("{}") @db.JsonB
+  responsePath     String?       @db.VarChar(500)
   timeoutMs        Int           @default(15000)
   maxResponseBytes Int           @default(1048576)
   createdById      String?       @db.Uuid
@@ -443,9 +454,12 @@ model ToolCredential {
 /// 结构化工具调用记录；用于来源展示、失败排查和运营统计。
 model ToolInvocation {
   id            String          @id @default(uuid()) @db.Uuid
-  generationId  String          @db.Uuid
+  generationId  String?         @db.Uuid
   messageId     String?         @db.Uuid
   toolVersionId String          @db.Uuid
+  actorId       String?         @db.Uuid
+  context       ToolInvocationContext @default(CHAT)
+  sessionExternalId String?     @db.VarChar(128)
   callId        String          @db.VarChar(255)
   status        ExecutionStatus @default(PENDING)
   input         Json            @db.JsonB
@@ -457,13 +471,15 @@ model ToolInvocation {
   finishedAt    DateTime?       @db.Timestamptz(3)
   createdAt     DateTime        @default(now()) @db.Timestamptz(3)
 
-  generation  Generation   @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  generation  Generation?  @relation(fields: [generationId], references: [id], onDelete: Cascade)
   message     ChatMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
   toolVersion ToolVersion  @relation(fields: [toolVersionId], references: [id], onDelete: Restrict)
 
   @@unique([generationId, callId])
   @@index([toolVersionId, status, createdAt(sort: Desc)])
   @@index([messageId])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([sessionExternalId, createdAt(sort: Desc)])
 }
 
 /// 不可变用量流水；价格快照保证历史成本不受调价影响。
