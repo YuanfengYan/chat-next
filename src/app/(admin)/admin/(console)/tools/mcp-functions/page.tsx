@@ -1,5 +1,5 @@
 import { ToolRuntimeConfigTable } from "@/features/admin/components/tool-tables";
-import { getAdminToolEditorData, getAdminToolRuntimeConfigs } from "@/lib/admin/tools.service.server";
+import { getAdminToolEditorData, getAdminToolRuntimeConfigs } from "@/features/admin/server/tools.service.server";
 import { ToolVersionForm } from "@/features/admin/components/tool-config-forms";
 
 export default async function AdminToolRuntimeConfigsPage() {

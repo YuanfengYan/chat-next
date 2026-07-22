@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { AdminEmptyState, AdminPageHeader, AdminSection, StatusPill } from "@/features/admin/components/admin-page";
-import type { AdminToolInvocationLogItem, AdminToolListItem, AdminToolPermissionItem, AdminToolRuntimeConfigItem } from "@/lib/admin/types";
+import type { AdminToolInvocationLogItem, AdminToolListItem, AdminToolPermissionItem, AdminToolRuntimeConfigItem } from "@/features/admin/domain/types";
 
 export function ToolListTable({ tools }: { tools: AdminToolListItem[] }) {
   return (

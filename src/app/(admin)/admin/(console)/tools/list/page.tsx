@@ -1,6 +1,6 @@
 import { ToolListTable } from "@/features/admin/components/tool-tables";
-import { getAdminToolList } from "@/lib/admin/tools.service.server";
-import { getAdminToolEditorData } from "@/lib/admin/tools.service.server";
+import { getAdminToolList } from "@/features/admin/server/tools.service.server";
+import { getAdminToolEditorData } from "@/features/admin/server/tools.service.server";
 import { ToolCatalogForm } from "@/features/admin/components/tool-config-forms";
 
 export default async function AdminToolListPage() {

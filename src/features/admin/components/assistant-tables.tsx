@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { AdminEmptyState, AdminPageHeader, AdminSection, StatusPill } from "@/features/admin/components/admin-page";
-import type { AdminAssistantListItem, AdminKnowledgeBindingItem, AdminModelParameterItem, AdminPromptConfigItem, AdminToolBindingItem } from "@/lib/admin/types";
+import type { AdminAssistantListItem, AdminKnowledgeBindingItem, AdminModelParameterItem, AdminPromptConfigItem, AdminToolBindingItem } from "@/features/admin/domain/types";
 
 export function AssistantListTable({ assistants }: { assistants: AdminAssistantListItem[] }) {
   return (

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Separator } from "@/components/ui/separator";
+import { Separator } from "@/shared/ui/separator";
 
 export function AdminPageHeader({ title, description }: { title: string; description: string }) {
   return (

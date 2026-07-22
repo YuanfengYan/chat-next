@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AdminAccessDenied } from "@/features/admin/components/admin-access-denied";
 import { AdminLoginForm } from "@/features/admin/components/admin-login-form";
-import { getAdminViewer } from "@/lib/admin/auth.server";
+import { getAdminViewer } from "@/features/admin/server/auth.server";
 
 /** 后台独立登录页：与前台 /auth 分离，登录成功后只进入后台权限校验链路。 */
 export default async function AdminLoginPage() {

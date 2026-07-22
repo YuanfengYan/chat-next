@@ -3,10 +3,10 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { authClient } from "@/lib/auth/auth-client";
-import { signInSchema } from "@/lib/auth/validation";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { authClient } from "@/features/auth/client/auth-client";
+import { signInSchema } from "@/features/auth/domain/validation";
 
 /** 后台独立登录表单：复用账号体系，登录后由后台服务端权限守卫继续校验管理员身份。 */
 export function AdminLoginForm() {

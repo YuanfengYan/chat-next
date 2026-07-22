@@ -1,5 +1,5 @@
 import { ModelParameterTable } from "@/features/admin/components/assistant-tables";
-import { getAdminModelParameterConfigs } from "@/lib/admin/assistants.service.server";
+import { getAdminModelParameterConfigs } from "@/features/admin/server/assistants.service.server";
 
 export default async function AdminModelParamsPage() {
   const models = await getAdminModelParameterConfigs();

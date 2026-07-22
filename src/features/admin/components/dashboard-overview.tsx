@@ -1,5 +1,5 @@
 import { AdminEmptyState, AdminPageHeader, AdminSection, StatusPill } from "@/features/admin/components/admin-page";
-import type { AdminDashboardOverview } from "@/lib/admin/types";
+import type { AdminDashboardOverview } from "@/features/admin/domain/types";
 
 /** 后台仪表盘首屏，聚合账号、工具和会话运营概览。 */
 export function DashboardOverview({ overview }: { overview: AdminDashboardOverview }) {

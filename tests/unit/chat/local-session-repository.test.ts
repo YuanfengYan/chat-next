@@ -1,0 +1,45 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import { LocalSessionRepository, STORAGE_KEY } from "@/features/chat/client/repositories/local-session-repository";
+import { createSession } from "@/features/chat/domain/chat";
+
+describe("LocalSessionRepository", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("saves, lists, loads and removes sessions", async () => {
+    const repository = new LocalSessionRepository();
+    const session = createSession("chat-1");
+    session.title = "测试对话";
+    await repository.save(session);
+    expect(await repository.list()).toEqual([expect.objectContaining({ id: "chat-1", title: "测试对话" })]);
+    expect(await repository.get("chat-1")).toEqual(session);
+    await repository.remove("chat-1");
+    expect(await repository.list()).toEqual([]);
+  });
+
+  it("ignores damaged records while preserving valid records", async () => {
+    const valid = createSession("valid");
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, sessions: [{ broken: true }, valid] }));
+    expect(await new LocalSessionRepository().list()).toEqual([expect.objectContaining({ id: "valid" })]);
+  });
+
+  it("falls back safely for invalid storage envelopes", async () => {
+    localStorage.setItem(STORAGE_KEY, "not-json");
+    expect(await new LocalSessionRepository().list()).toEqual([]);
+  });
+
+  it("migrates sessions created before skill selection existed", async () => {
+    const legacy = createSession("legacy") as Partial<ReturnType<typeof createSession>>;
+    delete legacy.skillIds;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, sessions: [legacy] }));
+    expect((await new LocalSessionRepository().get("legacy"))?.skillIds).toEqual([]);
+  });
+
+  it("removes temporary image data before persistence", async () => {
+    const session = createSession("image-chat");
+    session.messages = [{ id: "m1", role: "user", parts: [{ type: "file", mediaType: "image/png", filename: "test.png", url: "data:image/png;base64,secret" }] }];
+    await new LocalSessionRepository().save(session);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? "";
+    expect(raw).not.toContain("secret");
+    expect((await new LocalSessionRepository().get("image-chat"))?.messages[0].parts[0]).toEqual(expect.objectContaining({ url: "attachment:expired", filename: "test.png" }));
+  });
+});

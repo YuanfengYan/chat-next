@@ -4,11 +4,11 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, LoaderCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { authClient } from "@/lib/auth/auth-client";
-import { signInSchema, signUpSchema, type AuthFieldErrors } from "@/lib/auth/validation";
-import { cn } from "@/lib/utils";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { authClient } from "@/features/auth/client/auth-client";
+import { signInSchema, signUpSchema, type AuthFieldErrors } from "@/features/auth/domain/validation";
+import { cn } from "@/shared/lib/utils";
 
 type AuthMode = "login" | "register";
 

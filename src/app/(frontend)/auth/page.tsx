@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Bot, BrainCircuit, ShieldCheck, Sparkles } from "lucide-react";
 import { AuthForm } from "@/features/auth/components/auth-form";
-import { getCurrentSession } from "@/lib/auth/session.server";
+import { getCurrentSession } from "@/features/auth/server/session.server";
 
 export const metadata: Metadata = { title: "登录 | DeepChat", description: "登录或注册 DeepChat" };
 

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { localSessionRepository } from "@/features/chat/repositories/local-session-repository";
+import { localSessionRepository } from "@/features/chat/client/repositories/local-session-repository";
 
 /** 已登录入口：从浏览器恢复最近会话，没有历史时创建新会话路由。 */
 export function HomeLauncher() {

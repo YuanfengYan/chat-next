@@ -43,7 +43,7 @@ pnpm db:deploy
 - `pnpm db:deploy`：在部署环境应用已有迁移。
 - `pnpm db:studio`：打开 Prisma Studio。
 
-当前数据库层仅提供 schema、迁移和 server-only Prisma Client，聊天仍由 `LocalSessionRepository` 持久化到浏览器 localStorage。
+聊天支持浏览器本地会话和登录用户云端会话；两种持久化方式都通过聊天领域的 `SessionRepository` 契约访问。
 
 ## 工程命令
 
@@ -62,10 +62,14 @@ pnpm build
 
 ## 架构
 
-- `src/features/chat`：聊天组件、控制器、Store、Repository 和消息渲染器。
-- `src/lib/ai`：模型目录、Transport、错误协议和服务端 Provider Registry。
-- `src/lib/db`：仅服务端可用的数据库连接入口。
-- `src/components/ui`：shadcn/ui 基础组件。
+- `src/app`：Next.js 页面、布局和薄 HTTP 入口，不承载业务编排。
+- `src/features`：按 `chat`、`ai`、`auth`、`admin` 领域组织业务，每个领域明确区分 domain、client 和 server。
+- `src/shared`：无业务含义的基础 UI、主题组件和通用函数。
+- `src/infrastructure`：Prisma、凭证加密等仅服务端可用的技术实现。
+- `src/generated`：Prisma 生成代码，不放置手写业务。
+- `tests`：按 unit、components、integration 和 setup 集中管理测试。
 - `prisma`：数据库 schema 和版本化迁移。
+
+依赖方向固定为 `app → features → shared`。领域服务端适配器可以依赖 `infrastructure`，但基础设施不得反向依赖业务领域；客户端代码不得导入 `server`、`infrastructure` 或 Prisma。
 
 模型密钥只由服务端路由读取，不会发送到浏览器。数据库中的平台凭据字段只允许保存服务端加密后的内容，禁止写入明文密钥。

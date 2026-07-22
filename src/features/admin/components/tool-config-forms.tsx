@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Textarea } from "@/shared/ui/textarea";
 import { AdminSection } from "@/features/admin/components/admin-page";
-import { archiveToolVersionAction, bindModelToolAction, cloneToolVersionAction, createToolAction, createToolVersionAction, publishToolVersionAction, testToolVersionAction, toggleToolAction } from "@/lib/admin/tool-actions";
+import { archiveToolVersionAction, bindModelToolAction, cloneToolVersionAction, createToolAction, createToolVersionAction, publishToolVersionAction, testToolVersionAction, toggleToolAction } from "@/features/admin/server/tool-actions";
 
 type ToolOption = { id: string; key: string; name: string; isEnabled: boolean };
 type ModelOption = { id: string; key: string; name: string };

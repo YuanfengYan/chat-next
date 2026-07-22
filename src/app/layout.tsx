@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 /** 根布局：提供全局字体、主题上下文和应用元信息。 */
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/shared/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

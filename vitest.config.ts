@@ -4,11 +4,16 @@ import path from "node:path";
 
 export default defineConfig({
     plugins: [react()],
-    test: { environment: "jsdom", setupFiles: ["./vitest.setup.ts"], globals: true },
+    test: {
+        environment: "jsdom",
+        setupFiles: ["./tests/setup/vitest.setup.ts"],
+        include: ["tests/**/*.{test,spec}.{ts,tsx}"],
+        globals: true,
+    },
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "./src"),
-            "server-only": path.resolve(__dirname, "./src/test/server-only.ts"),
+            "server-only": path.resolve(__dirname, "./tests/setup/server-only.ts"),
         },
     },
 });

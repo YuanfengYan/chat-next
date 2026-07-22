@@ -1,5 +1,5 @@
 import { ToolPermissionTable } from "@/features/admin/components/tool-tables";
-import { getAdminToolEditorData, getAdminToolPermissionOverview } from "@/lib/admin/tools.service.server";
+import { getAdminToolEditorData, getAdminToolPermissionOverview } from "@/features/admin/server/tools.service.server";
 import { ToolBindingForm } from "@/features/admin/components/tool-config-forms";
 
 export default async function AdminToolPermissionsPage() {

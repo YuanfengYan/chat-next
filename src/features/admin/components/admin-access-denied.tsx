@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, ShieldAlert } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import type { AdminViewer } from "@/lib/admin/types";
-import { authClient } from "@/lib/auth/auth-client";
+import { Button } from "@/shared/ui/button";
+import type { AdminViewer } from "@/features/admin/domain/types";
+import { authClient } from "@/features/auth/client/auth-client";
 
 /** 已登录但缺少后台权限时的安全降级界面。 */
 export function AdminAccessDenied({ viewer }: { viewer: AdminViewer }) {
